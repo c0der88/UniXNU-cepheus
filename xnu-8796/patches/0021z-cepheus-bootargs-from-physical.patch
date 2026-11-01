@@ -1,0 +1,35 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -420,7 +420,31 @@
+ 
+ 	/* If kernel integrity is supported, use a constant copy of the boot args. */
+ 	cepheus_early_mark(18, "M3 before const_boot_args copy");
++#if defined(CEPHEUS)
++	{
++		/*
++		 * The boot args KVA start.s computes is not readable as the real
++		 * boot args on cepheus: the bootstrap KVA window is built from
++		 * virtBase/physBase with block-sized alignment, and this board's
++		 * kernel load PA and link address disagree in their low bits, so
++		 * the window is shifted.  V1..V3 in pe_identify_machine() show a
++		 * garbage const copy.  start.s saved the physical address of the
++		 * real boot args in cepheus_boot_regs[0]; the V=P window is proven
++		 * good (all the physical dumps above), so copy from there.
++		 */
++		boot_args *pa_args = (boot_args *)(uintptr_t)cepheus_boot_regs[0];
++
++		cepheus_early_mark(20, "K0 copying boot_args from its physical address");
++		cepheus_early_mark(pa_args->Revision == 2u && pa_args->Version == 2u ? 15u : 16u,
++		    "K1 PA boot_args Revision/Version sane (15=yes 16=no)");
++		cepheus_early_mark(pa_args->Video.v_width == 1080UL &&
++		    pa_args->Video.v_height == 2340UL ? 13u : 14u,
++		    "K2 PA video sane (13=yes 14=no)");
++		const_boot_args = *pa_args;
++	}
++#else
+ 	const_boot_args = *args;
++#endif
+ 	BootArgs = args = &const_boot_args;
+ 	cepheus_early_mark(20, "M4 after const_boot_args copy");
+ 
