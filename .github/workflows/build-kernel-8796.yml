@@ -195,7 +195,7 @@ jobs:
           echo "kernel: $K"
           python3 scripts/make-cepheus-adt.py \
             --output out/kernel.macho.adt \
-            --dram-size 0x180000000 \
+            --dram-size 0x300000000 \
             --owned-memory-size 0x20000000 \
             --cpu-regs 0,0x100,0x200,0x300,0x400,0x500,0x600,0x700 \
             --fbcon-reg 0x9c000000 \
