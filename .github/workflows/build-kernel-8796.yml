@@ -146,6 +146,7 @@ jobs:
             0020z-cepheus-device-tree-physical \
             0021z-cepheus-bootargs-from-physical \
             0022z-cepheus-cpu-init-marks \
+            0023z-cepheus-iig-kernelcontent \
             0028-nabu-ufs-root-device
           do
             if grep -q "Applying patch:.*${p}\.patch" "$LOG"; then

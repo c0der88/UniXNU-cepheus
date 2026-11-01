@@ -1,0 +1,42 @@
+diff --git a/iokit/IOKit/IORPC.h b/iokit/IOKit/IORPC.h
+--- a/iokit/IOKit/IORPC.h
++++ b/iokit/IOKit/IORPC.h
+@@ -224,6 +224,17 @@
+ 	IORPCMessageMach * reply;
+ 	uint32_t           sendSize;
+ 	uint32_t           replySize;
++#ifdef KERNEL
++	/*
++	 * iig from Xcode 16.3+/26.x/27.x emits `rpc.kernelContent = ...` into the
++	 * generated .iig.cpp.  xnu-8796 has no such field, so the IOKit target
++	 * fails with "field designator 'kernelContent' does not refer to any field
++	 * in type 'IORPC'".  Backport the field from xnu-10063 (where it exists
++	 * under the same #ifdef KERNEL); harmless for older iig, which never sets
++	 * it.
++	 */
++	IORPCMessage     * kernelContent;
++#endif /* KERNEL */
+ };
+ typedef struct IORPC IORPC;
+ 
+diff --git a/iokit/DriverKit/IORPC.h b/iokit/DriverKit/IORPC.h
+--- a/iokit/DriverKit/IORPC.h
++++ b/iokit/DriverKit/IORPC.h
+@@ -224,6 +224,17 @@
+ 	IORPCMessageMach * reply;
+ 	uint32_t           sendSize;
+ 	uint32_t           replySize;
++#ifdef KERNEL
++	/*
++	 * iig from Xcode 16.3+/26.x/27.x emits `rpc.kernelContent = ...` into the
++	 * generated .iig.cpp.  xnu-8796 has no such field, so the IOKit target
++	 * fails with "field designator 'kernelContent' does not refer to any field
++	 * in type 'IORPC'".  Backport the field from xnu-10063 (where it exists
++	 * under the same #ifdef KERNEL); harmless for older iig, which never sets
++	 * it.
++	 */
++	IORPCMessage     * kernelContent;
++#endif /* KERNEL */
+ };
+ typedef struct IORPC IORPC;
+ 
