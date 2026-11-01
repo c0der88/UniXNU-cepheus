@@ -1,0 +1,99 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -419,8 +419,6 @@
+ 	cepheus_early_mark(17, "M2 after arm_slide_rebase_and_sign_image");
+ 
+ 	/* If kernel integrity is supported, use a constant copy of the boot args. */
+-	cepheus_early_boot_dump(cepheus_boot_regs, "regs0");
+-	cepheus_early_boot_dump((const volatile void *)cepheus_boot_regs[0], "args-PA");
+ 	cepheus_early_mark(18, "M3 before const_boot_args copy");
+ 	const_boot_args = *args;
+ 	BootArgs = args = &const_boot_args;
+diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine.c
+--- a/pexpert/arm/pe_identify_machine.c
++++ b/pexpert/arm/pe_identify_machine.c
+@@ -9,6 +9,19 @@
+ 
+ #include <pexpert/arm64/board_config.h>
+ 
++/*
++ * CEPHEUS bring-up: the early framebuffer console lives in osfmk and its
++ * header directory is not on pexpert's include path, so only the one entry
++ * point is declared.  Marks N*/G* bracket pe_identify_machine(), the current
++ * silent-death candidate.
++ */
++#if defined(CEPHEUS)
++extern void cepheus_early_mark(unsigned int stage, const char *label);
++#define CEPHEUS_EARLY_MARK(stage, label) cepheus_early_mark((stage), (label))
++#else
++#define CEPHEUS_EARLY_MARK(stage, label) do { } while (0)
++#endif
++
+ #include <kern/clock.h>
+ #include <machine/machine_routines.h>
+ #if DEVELOPMENT || DEBUG
+@@ -57,9 +70,11 @@
+ 
+ 	(void)bootArgs;
+ 
++	CEPHEUS_EARLY_MARK(20, "N1 pe_identify_machine entry");
+ 	if (pe_arm_get_soc_base_phys() == 0) {
+ 		return;
+ 	}
++	CEPHEUS_EARLY_MARK(20, "N2 soc base phys nonzero");
+ 
+ 	/* Clear the gPEClockFrequencyInfo struct */
+ 	bzero((void *)&gPEClockFrequencyInfo, sizeof(clock_frequency_info_t));
+@@ -70,9 +85,11 @@
+ 	gPEClockFrequencyInfo.cpu_clock_rate_hz = 400000000;
+ 
+ 	err = SecureDTLookupEntry(NULL, "/cpus", &cpus);
++	CEPHEUS_EARLY_MARK(20, "N3 after lookup /cpus");
+ 	assert(err == kSuccess);
+ 
+ 	err = SecureDTInitEntryIterator(cpus, &iter);
++	CEPHEUS_EARLY_MARK(20, "N4 iterator ready");
+ 	assert(err == kSuccess);
+ 
+ 	while (kSuccess == SecureDTIterateEntries(&iter, &cpu)) {
+@@ -160,6 +177,7 @@
+ 			gPEClockFrequencyInfo.cpu_clock_rate_hz = 0xFFFFFFFF;
+ 		}
+ 	}
++	CEPHEUS_EARLY_MARK(20, "N5 cpu loop done");
+ 
+ 	/* Set the num / den pairs form the hz values. */
+ 	gPEClockFrequencyInfo.bus_clock_rate_num = gPEClockFrequencyInfo.bus_clock_rate_hz;
+@@ -172,6 +190,7 @@
+ 	gPEClockFrequencyInfo.bus_to_dec_rate_num = 1;
+ 	gPEClockFrequencyInfo.bus_to_dec_rate_den =
+ 	    gPEClockFrequencyInfo.bus_clock_rate_hz / gPEClockFrequencyInfo.dec_clock_rate_hz;
++	CEPHEUS_EARLY_MARK(20, "N6 pe_identify_machine done");
+ }
+ 
+ vm_offset_t
+@@ -182,17 +201,23 @@
+ 	uint32_t        prop_size;
+ 	char const      *tmpStr;
+ 
++	CEPHEUS_EARLY_MARK(20, "G0 soc_base entry");
+ 	if (SecureDTFindEntry("name", "arm-io", &entryP) == kSuccess) {
++		CEPHEUS_EARLY_MARK(20, "G1 arm-io found");
+ 		if (gPESoCDeviceType == 0) {
+ 			SecureDTGetProperty(entryP, "device_type", (void const **)&tmpStr, &prop_size);
++			CEPHEUS_EARLY_MARK(20, "G2 device_type read");
+ 			strlcpy(gPESoCDeviceTypeBuffer, tmpStr, SOC_DEVICE_TYPE_BUFFER_SIZE);
+ 			gPESoCDeviceType = gPESoCDeviceTypeBuffer;
+ 
+ 			SecureDTGetProperty(entryP, "ranges", (void const **)&ranges_prop, &prop_size);
++			CEPHEUS_EARLY_MARK(20, "G3 ranges read");
+ 			gPESoCBasePhys = *(ranges_prop + 1);
++			CEPHEUS_EARLY_MARK(20, "G4 soc base computed");
+ 		}
+ 		return gPESoCBasePhys;
+ 	}
++	CEPHEUS_EARLY_MARK(20, "G5 arm-io NOT found");
+ 	return 0;
+ }
+ 

@@ -134,6 +134,7 @@ jobs:
             0012-nabu-keep-debug-console-after-ttbr0 \
             0016z-cepheus-arm-init-stage-marks \
             0017z-cepheus-pe-init-platform-marks \
+            0018z-cepheus-pe-identify-machine-marks \
             0028-nabu-ufs-root-device
           do
             if grep -q "Applying patch:.*${p}\.patch" "$LOG"; then
