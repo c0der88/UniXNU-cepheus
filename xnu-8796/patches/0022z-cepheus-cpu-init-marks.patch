@@ -1,0 +1,97 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -562,7 +562,9 @@
+ 	/*
+ 	 * Initialize the timer callout world
+ 	 */
++	cepheus_early_mark(20, "T1 before timer_call_init");
+ 	timer_call_init();
++	cepheus_early_mark(20, "T2 after timer_call_init");
+ 
+ 	cpu_init();
+ 
+diff --git a/osfmk/arm64/cpu.c b/osfmk/arm64/cpu.c
+--- a/osfmk/arm64/cpu.c
++++ b/osfmk/arm64/cpu.c
+@@ -32,6 +32,9 @@
+  */
+ 
+ #include <pexpert/arm64/board_config.h>
++#if defined(CEPHEUS)
++#include <arm64/cepheus_early.h>
++#endif
+ #include <kern/kalloc.h>
+ #include <kern/machine.h>
+ #include <kern/cpu_number.h>
+@@ -680,16 +683,20 @@
+ 	arm_cpu_info_t *cpu_info_p;
+ 
+ 	assert(exception_stack_pointer() != 0);
++	cepheus_early_mark(20, "C0 cpu_init entry");
+ 
+ 	if (cdp->cpu_type != CPU_TYPE_ARM64) {
+ 		cdp->cpu_type = CPU_TYPE_ARM64;
+ 
++		cepheus_early_mark(20, "C1 before timer_call_queue_init");
+ 		timer_call_queue_init(&cdp->rtclock_timer.queue);
+ 		cdp->rtclock_timer.deadline = EndOfAllTime;
++		cepheus_early_mark(18, "C2 timer_call_queue_init done");
+ 
+ 		if (cdp == &BootCpuData) {
+ 			do_cpuid();
+ 			do_mvfpid();
++			cepheus_early_mark(17, "C3 do_cpuid and do_mvfpid done");
+ 		} else {
+ 			/*
+ 			 * We initialize non-boot CPUs here; the boot CPU is
+@@ -699,11 +706,14 @@
+ 		}
+ 
+ 		do_cacheid();
++		cepheus_early_mark(16, "C4 do_cacheid done");
+ 
+ 		/* ARM_SMP: Assuming identical cpu */
+ 		do_debugid();
++		cepheus_early_mark(15, "C5 do_debugid done");
+ 
+ 		cpu_info_p = cpuid_info();
++		cepheus_early_mark(14, "C6 cpuid_info done");
+ 
+ 		/* switch based on CPU's reported architecture */
+ 		switch (cpu_info_p->arm_info.arm_arch) {
+diff --git a/osfmk/kern/printf.c b/osfmk/kern/printf.c
+--- a/osfmk/kern/printf.c
++++ b/osfmk/kern/printf.c
+@@ -162,6 +162,9 @@
+ #include <kern/debug.h>
+ #include <kern/sched_prim.h>
+ #include <kern/misc_protos.h>
++#if defined(CEPHEUS)
++#include <arm64/cepheus_early.h>
++#endif
+ #include <stdarg.h>
+ #include <string.h>
+ #include <mach_assert.h>
+@@ -804,6 +807,21 @@
+ bool
+ bsd_log_lock(bool safe)
+ {
++#if defined(CEPHEUS)
++	/* Once-only breadcrumb: is log_lock initialised by the time the first
++	 * OS log write happens, and is it still all zeroes? */
++	static int cepheus_log_lock_note;
++	if (!cepheus_log_lock_note) {
++		const volatile uint32_t *lw = (const volatile uint32_t *)&log_lock;
++		cepheus_log_lock_note = 1;
++		cepheus_early_mark(20, "L0 bsd_log_lock entered");
++		if (lw[0] == 0u && lw[1] == 0u && lw[2] == 0u && lw[3] == 0u) {
++			cepheus_early_mark(19, "L1 log_lock is ALL ZERO (never initialised)");
++		} else {
++			cepheus_early_mark(17, "L1 log_lock has initialiser data");
++		}
++	}
++#endif
+ 	if (!safe) {
+ 		assert(!oslog_is_safe());
+ #if defined(__x86_64__)
