@@ -6,8 +6,10 @@ name: build-xnu-8796
 #
 # Hard constraints, learned from the reference project (mytiantian001/iPadOS-cepheus,
 # see docs/prior-art-mytiantian001-ipados-cepheus.md):
-#   * Xcode 16's iig emits IORPC.kernelContent, which xnu-8796 does not have ->
-#     the runner must stay on macos-14 with its oldest Xcode 15.
+#   * Newer Xcode's iig (16.3+/26.x) emits IORPC.kernelContent, which xnu-8796
+#     does not have.  Xcode 16.0 is the oldest iig still available on a hosted
+#     image and was verified to build this line on 2026-11-01, after GitHub
+#     retired the macos-14 image (its only other home was macos-14 + Xcode 15).
 #   * libfirehose_kernel is built arm64e-only; the CEPHEUS kernel is plain arm64,
 #     so build.sh has to be told to build arm64 as well.
 #   * MACHINE_CONFIG=CEPHEUS selects the MASTER.arm64.cepheus config that patch 0006 adds.
@@ -40,7 +42,7 @@ env:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 150
     # The repository default is read-only ("Contents: read"). The release step
     # needs contents:write to create the k8796-<run_id> release; without this
@@ -69,15 +71,20 @@ jobs:
           ls dxb/patches | head -5
           ls dxb/patches | wc -l
 
-      - name: Toolchain (Xcode 15 only)
+      - name: Toolchain (oldest iig available: Xcode 16.0)
         run: |
           brew install jq gum bash cmake ninja || true
           printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/xcodes >/dev/null
           sudo chmod +x /usr/local/bin/xcodes
           sw_vers
           ls -d /Applications/Xcode*.app
-          XC=$(ls -d /Applications/Xcode_15*.app | sort -V | head -1)
-          if [ -z "$XC" ]; then XC=$(ls -d /Applications/Xcode_*.app | sort -V | head -1); fi
+          # macos-14 was retired on 2026-11-01, so Xcode 15 is gone.  Xcode 16.0
+          # is the oldest iig available there and builds this xnu generation
+          # fine (16.3+/26.x are the ones that emit IORPC.kernelContent).
+          XC=/Applications/Xcode_16.0.app
+          [ -d "$XC" ] || XC=/Applications/Xcode_16.0.0.app
+          [ -d "$XC" ] || XC=$(ls -d /Applications/Xcode_16*.app | sort -V | head -1)
+          [ -d "$XC" ] || XC=$(ls -d /Applications/Xcode_*.app | sort -V | head -1)
           echo "picked: $XC"
           echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
           sudo xcode-select -s "$XC"
