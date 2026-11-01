@@ -132,6 +132,7 @@ jobs:
             0010-nabu-early-framebuffer-debug \
             0010z-cepheus-early-framebuffer-from-bootargs \
             0012-nabu-keep-debug-console-after-ttbr0 \
+            0016z-cepheus-arm-init-stage-marks \
             0028-nabu-ufs-root-device
           do
             if grep -q "Applying patch:.*${p}\.patch" "$LOG"; then
