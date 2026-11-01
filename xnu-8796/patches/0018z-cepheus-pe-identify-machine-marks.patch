@@ -13,15 +13,17 @@ diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
 diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine.c
 --- a/pexpert/arm/pe_identify_machine.c
 +++ b/pexpert/arm/pe_identify_machine.c
-@@ -9,6 +9,19 @@
+@@ -8,6 +8,20 @@
+ #include <pexpert/device_tree.h>
  
  #include <pexpert/arm64/board_config.h>
- 
++
 +/*
 + * CEPHEUS bring-up: the early framebuffer console lives in osfmk and its
 + * header directory is not on pexpert's include path, so only the one entry
-+ * point is declared.  Marks N*/G* bracket pe_identify_machine(), the current
-+ * silent-death candidate.
++ * point is declared. Marks N1..N6 inside pe_identify_machine() and G0..G5
++ * inside pe_arm_get_soc_base_phys() bracket the current silent-death
++ * candidate.
 + */
 +#if defined(CEPHEUS)
 +extern void cepheus_early_mark(unsigned int stage, const char *label);
@@ -29,11 +31,10 @@ diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine
 +#else
 +#define CEPHEUS_EARLY_MARK(stage, label) do { } while (0)
 +#endif
-+
+ 
  #include <kern/clock.h>
  #include <machine/machine_routines.h>
- #if DEVELOPMENT || DEBUG
-@@ -57,9 +70,11 @@
+@@ -57,9 +71,11 @@
  
  	(void)bootArgs;
  
@@ -45,7 +46,7 @@ diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine
  
  	/* Clear the gPEClockFrequencyInfo struct */
  	bzero((void *)&gPEClockFrequencyInfo, sizeof(clock_frequency_info_t));
-@@ -70,9 +85,11 @@
+@@ -70,9 +86,11 @@
  	gPEClockFrequencyInfo.cpu_clock_rate_hz = 400000000;
  
  	err = SecureDTLookupEntry(NULL, "/cpus", &cpus);
@@ -57,7 +58,7 @@ diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine
  	assert(err == kSuccess);
  
  	while (kSuccess == SecureDTIterateEntries(&iter, &cpu)) {
-@@ -160,6 +177,7 @@
+@@ -160,6 +178,7 @@
  			gPEClockFrequencyInfo.cpu_clock_rate_hz = 0xFFFFFFFF;
  		}
  	}
@@ -65,7 +66,7 @@ diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine
  
  	/* Set the num / den pairs form the hz values. */
  	gPEClockFrequencyInfo.bus_clock_rate_num = gPEClockFrequencyInfo.bus_clock_rate_hz;
-@@ -172,6 +190,7 @@
+@@ -172,6 +191,7 @@
  	gPEClockFrequencyInfo.bus_to_dec_rate_num = 1;
  	gPEClockFrequencyInfo.bus_to_dec_rate_den =
  	    gPEClockFrequencyInfo.bus_clock_rate_hz / gPEClockFrequencyInfo.dec_clock_rate_hz;
@@ -73,7 +74,7 @@ diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine
  }
  
  vm_offset_t
-@@ -182,17 +201,23 @@
+@@ -182,17 +202,23 @@
  	uint32_t        prop_size;
  	char const      *tmpStr;
  
