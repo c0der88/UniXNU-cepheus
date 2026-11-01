@@ -1,0 +1,17 @@
+name: probe-xcodes
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    steps:
+      - name: list xcodes
+        run: |
+          ls /Applications | grep -i xcode || true
+          for app in /Applications/Xcode*.app; do
+            echo "== $app"; "$app/Contents/Developer/usr/bin/xcodebuild" -version 2>/dev/null | head -2
+          done
