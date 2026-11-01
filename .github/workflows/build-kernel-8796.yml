@@ -348,3 +348,4 @@ jobs:
             out/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# retrigger note: workflow_dispatch started cancelling instantly at 14:0xZ; using a push-event run instead.
