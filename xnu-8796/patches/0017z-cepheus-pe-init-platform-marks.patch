@@ -1,0 +1,70 @@
+diff --git a/pexpert/arm/pe_init.c b/pexpert/arm/pe_init.c
+--- a/pexpert/arm/pe_init.c
++++ b/pexpert/arm/pe_init.c
+@@ -21,6 +21,20 @@
+ #include <os/overflow.h>
+ 
+ #include <pexpert/arm64/board_config.h>
++
++/*
++ * CEPHEUS bring-up: the early framebuffer console lives in osfmk and its
++ * header directory is not on pexpert's include path, so only the one entry
++ * point is declared.  Marks P1..P9 bracket PE_init_platform(), whose body is
++ * the current silent-death candidate (SecureDTInit / pe_identify_machine /
++ * the DT property reads / pe_init_debug).
++ */
++#if defined(CEPHEUS)
++extern void cepheus_early_mark(unsigned int stage, const char *label);
++#define CEPHEUS_EARLY_MARK(stage, label) cepheus_early_mark((stage), (label))
++#else
++#define CEPHEUS_EARLY_MARK(stage, label) do { } while (0)
++#endif
+ 
+ 
+ /* extern references */
+@@ -398,6 +412,8 @@
+ 	void * const    *prop;
+ 	boot_args      *boot_args_ptr = (boot_args *) args;
+ 
++	CEPHEUS_EARLY_MARK(20, "P1 PE_init_platform entry");
++
+ 	if (PE_state.initialized == FALSE) {
+ 		PE_state.initialized = TRUE;
+ 		PE_state.bootArgs = boot_args_ptr;
+@@ -416,20 +432,26 @@
+ 		PE_state.video.v_display = boot_args_ptr->Video.v_display;
+ 		strlcpy(PE_state.video.v_pixelFormat, "BBBBBBBBGGGGGGGGRRRRRRRR", sizeof(PE_state.video.v_pixelFormat));
+ 	}
++	CEPHEUS_EARLY_MARK(20, "P2 PE_state filled from boot_args");
+ 	if (!vm_initialized) {
+ 		/*
+ 		 * Setup the Device Tree routines
+ 		 * so the console can be found and the right I/O space
+ 		 * can be used..
+ 		 */
++		CEPHEUS_EARLY_MARK(20, "P3 before SecureDTInit");
+ 		SecureDTInit(PE_state.deviceTreeHead, PE_state.deviceTreeSize);
++		CEPHEUS_EARLY_MARK(20, "P4 after SecureDTInit");
++		CEPHEUS_EARLY_MARK(20, "P5 before pe_identify_machine");
+ 		pe_identify_machine(boot_args_ptr);
++		CEPHEUS_EARLY_MARK(20, "P6 after pe_identify_machine");
+ 	} else {
+ 		pe_arm_init_interrupts(args);
+ 		pe_arm_init_debug(args);
+ 	}
+ 
+ 	if (!vm_initialized) {
++		CEPHEUS_EARLY_MARK(20, "P7 before DT property reads");
+ 		if (kSuccess == (SecureDTFindEntry("name", "device-tree", &entry))) {
+ 			if (kSuccess == SecureDTGetProperty(entry, "target-type",
+ 			    (void const **)&prop, &size)) {
+@@ -499,7 +521,9 @@
+ 				bcopy(prop, &gPlatformMemoryID, size);
+ 			}
+ 		}
++		CEPHEUS_EARLY_MARK(20, "P8 before pe_init_debug");
+ 		pe_init_debug();
++		CEPHEUS_EARLY_MARK(20, "P9 PE_init_platform done");
+ 	}
+ }
+ 
