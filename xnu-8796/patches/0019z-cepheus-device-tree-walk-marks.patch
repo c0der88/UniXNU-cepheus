@@ -1,0 +1,122 @@
+diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine.c
+--- a/pexpert/arm/pe_identify_machine.c
++++ b/pexpert/arm/pe_identify_machine.c
+@@ -203,6 +203,25 @@
+ 	char const      *tmpStr;
+ 
+ 	CEPHEUS_EARLY_MARK(20, "G0 soc_base entry");
++	{
++		/* Is the device tree the loader handed over even readable? */
++		const volatile uint32_t *ceph_dt =
++		    (const volatile uint32_t *)PE_state.deviceTreeHead;
++		const volatile uint32_t *ceph_tail;
++		unsigned int ceph_np;
++		unsigned int ceph_nc;
++
++		CEPHEUS_EARLY_MARK(20, "H0 about to read DT header");
++		ceph_np = ceph_dt[0];
++		ceph_nc = ceph_dt[1];
++		CEPHEUS_EARLY_MARK(ceph_np <= 20u ? ceph_np : 20u, "H1 DT nProperties");
++		CEPHEUS_EARLY_MARK(ceph_nc <= 20u ? ceph_nc : 20u, "H2 DT nChildren");
++		ceph_tail = (const volatile uint32_t *)(void *)((const volatile char *)
++		    PE_state.deviceTreeHead + (PE_state.deviceTreeSize & ~3u) - 4u);
++		CEPHEUS_EARLY_MARK(20, "H3 about to read DT tail");
++		(void)ceph_tail[0];
++		CEPHEUS_EARLY_MARK(20, "H4 DT tail readable");
++	}
+ 	if (SecureDTFindEntry("name", "arm-io", &entryP) == kSuccess) {
+ 		CEPHEUS_EARLY_MARK(20, "G1 arm-io found");
+ 		if (gPESoCDeviceType == 0) {
+diff --git a/pexpert/gen/device_tree.c b/pexpert/gen/device_tree.c
+--- a/pexpert/gen/device_tree.c
++++ b/pexpert/gen/device_tree.c
+@@ -47,6 +47,19 @@
+ 
+ #include <sys/types.h>
+ 
++/*
++ * CEPHEUS bring-up diagnostics: the early framebuffer console lives in osfmk,
++ * whose header directory is not on pexpert's include path, so only the single
++ * entry point is declared.  SecureDTFindEntry() is the first code that reads
++ * the device tree during arm_init(); F-marks show how far its walk gets.
++ */
++#if defined(CEPHEUS)
++extern void cepheus_early_mark(unsigned int stage, const char *label);
++#define CEPHEUS_EARLY_MARK(stage, label) cepheus_early_mark((stage), (label))
++#else
++#define CEPHEUS_EARLY_MARK(stage, label) do { } while (0)
++#endif
++
+ SECURITY_READ_ONLY_LATE(static int) DTInitialized;
+ SECURITY_READ_ONLY_LATE(RealDTEntry) DTRootNode;
+ SECURITY_READ_ONLY_LATE(static vm_size_t) DTSize;
+@@ -280,23 +293,40 @@
+ int
+ SecureDTFindEntry(const char *propName, const char *propValue, DTEntry *entryH)
+ {
++	int startResult;
++
++	CEPHEUS_EARLY_MARK(20, "F0 SecureDTFindEntry entered");
+ 	if (!DTInitialized) {
+ 		return kError;
+ 	}
+ 
++	CEPHEUS_EARLY_MARK(20, "F1 device tree initialized; walking");
+ 	startingP = (char const *)DTRootNode;
+-	return find_entry(propName, propValue, entryH);
++	startResult = find_entry(propName, propValue, entryH);
++	CEPHEUS_EARLY_MARK(20, startResult == kSuccess ?
++	    "F2 find_entry FOUND the node" : "F2 find_entry did NOT find it");
++	return startResult;
+ }
+ 
++static int cepheus_find_entry_depth;
++
+ int
+ find_entry(const char *propName, const char *propValue, DTEntry *entryH)
+ {
+ 	DeviceTreeNode const *nodeP = (DeviceTreeNode const *) (void const *) startingP;
+ 	unsigned int k;
++	boolean_t cepheus_top;
+ 
++	cepheus_top = (cepheus_find_entry_depth == 0);
++	cepheus_find_entry_depth++;
++	if (cepheus_top) {
++		CEPHEUS_EARLY_MARK(20, "F3 find_entry root node entered");
++	}
++
+ 	ASSERT_HEADER_IN_DT(nodeP, sizeof(DeviceTreeNode));
+ 
+ 	if (nodeP->nProperties == 0) {
++		cepheus_find_entry_depth--;
+ 		return kError;                        // End of the list of nodes
+ 	}
+ 	startingP = (char const *) (nodeP + 1);
+@@ -312,17 +342,27 @@
+ 			if (propValue == NULL || strcmp((char const *)(propP + 1), propValue) == 0) {
+ 				*entryH = (DTEntry)nodeP;
+ 				ASSERT_HEADER_IN_DT(*entryH, sizeof(DeviceTreeNode));
++				cepheus_find_entry_depth--;
+ 				return kSuccess;
+ 			}
+ 		}
+ 	}
+ 
++	if (cepheus_top) {
++		CEPHEUS_EARLY_MARK(20, "F5 root properties scanned");
++	}
++
+ 	// Search child nodes
+ 	for (k = 0; k < nodeP->nChildren; ++k) {
++		if (cepheus_top) {
++			CEPHEUS_EARLY_MARK(k <= 20u ? k : 20u, "F6 walking root child index");
++		}
+ 		if (find_entry(propName, propValue, entryH) == kSuccess) {
++			cepheus_find_entry_depth--;
+ 			return kSuccess;
+ 		}
+ 	}
++	cepheus_find_entry_depth--;
+ 	return kError;
+ }
+ 
