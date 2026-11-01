@@ -1,0 +1,47 @@
+diff --git a/pexpert/arm/pe_identify_machine.c b/pexpert/arm/pe_identify_machine.c
+--- a/pexpert/arm/pe_identify_machine.c
++++ b/pexpert/arm/pe_identify_machine.c
+@@ -72,6 +72,43 @@
+ 	(void)bootArgs;
+ 
+ 	CEPHEUS_EARLY_MARK(20, "N1 pe_identify_machine entry");
++	{
++		/*
++		 * DarwinBoot hands boot_args.DeviceTree over as a KVA
++		 * (Kernel.Base + TreeAddress - Address), but everything in XNU's
++		 * early boot treats PE_state.deviceTreeHead as a physical address:
++		 * PE_slide_devicetree() is what adds the slide later.  Verify the
++		 * hand-off, then rewrite it to the physical address before the
++		 * first DT read.
++		 */
++		boot_args *ceph_ba = (boot_args *)PE_state.bootArgs;
++		uintptr_t ceph_dt = (uintptr_t)PE_state.deviceTreeHead;
++		uintptr_t ceph_vbase = (uintptr_t)ceph_ba->virtBase;
++		uintptr_t ceph_pbase = (uintptr_t)ceph_ba->physBase;
++		uintptr_t ceph_win = (uintptr_t)ceph_ba->memSize;
++
++		CEPHEUS_EARLY_MARK(ceph_ba->Revision == 2u && ceph_ba->Version == 2u ? 15u : 16u,
++		    "V1 boot_args copy sane (15=yes 16=no)");
++		CEPHEUS_EARLY_MARK(ceph_ba->Video.v_width == 1080UL &&
++		    ceph_ba->Video.v_height == 2340UL ? 13u : 14u,
++		    "V2 video copy sane (13=yes 14=no)");
++		CEPHEUS_EARLY_MARK(ceph_ba->memSize == 0x20000000ULL ? 11u : 12u,
++		    "V3 memSize is 512 MiB (11=yes 12=no)");
++		CEPHEUS_EARLY_MARK((ceph_dt >= ceph_vbase && ceph_dt - ceph_vbase < ceph_win) ? 9u : 10u,
++		    "V4 deviceTreeHead is a KVA (9=yes 10=no)");
++		if (ceph_dt >= ceph_vbase && ceph_dt - ceph_vbase < ceph_win) {
++			uintptr_t ceph_pa = ceph_dt - (ceph_vbase - ceph_pbase);
++
++			CEPHEUS_EARLY_MARK(ceph_pa >= ceph_pbase &&
++			    ceph_pa - ceph_pbase < ceph_win ? 19u : 20u,
++			    "V5 DT physical address inside window (19=yes 20=no)");
++			if (ceph_pa >= ceph_pbase && ceph_pa - ceph_pbase < ceph_win) {
++				PE_state.deviceTreeHead = (void *)ceph_pa;
++				SecureDTInit(PE_state.deviceTreeHead, PE_state.deviceTreeSize);
++				CEPHEUS_EARLY_MARK(20, "V6 DT head rewritten to PA plus SecureDTInit");
++			}
++		}
++	}
+ 	if (pe_arm_get_soc_base_phys() == 0) {
+ 		return;
+ 	}
