@@ -51,11 +51,12 @@ archives = [
 # dram_size。nabu 的 fbcon reg=<0x9C000000 0xC00000> 是 nabu 面板 framebuffer
 # 的地址，小米 9 的必须从设备树实测（TODO_MEASURE）。
 tool = "scripts/make-cepheus-adt.py"
-# 实测 2026-10-24（TWRP）：/proc/meminfo MemTotal = 5637008 kB ≈ 5.38 GiB，
-# 扣除 modem/hyp/rmtfs 预留后物理内存为 6GB 变体 => dram_size = 0x180000000，
+# 原维护机为 6GB 变体（TWRP MemTotal = 5637008 kB ≈ 5.38 GiB）；
+# 本机为 12GB/256GB 变体：MemTotal 11708180 kB + modem/hyp/rmtfs 预留 ≈ 12 GiB => dram_size = 0x300000000
+# （原 6GB 变体为 0x180000000，仅作对照）
 # 与 CI ADT 已用的占位值一致（fbcon reg 仍待 UEFI 引导实测）。
 owned_memory_size = "0x20000000"
-dram_size = "0x180000000"          # 实测 2026-10-24：6GB 变体
+dram_size = "0x300000000"          # 12GB/256GB 变体（本机 MemTotal ≈ 11.17 GiB + 预留 ≈ 12 GiB）
 cpu_regs = "0,0x100,0x200,0x300,0x400,0x500,0x600,0x700"
 packed_data_ramdisk = true
 # OS 卷 vol_uuid：与 nabu 同一 IPSW（044-76040-038.dmg），值相同；

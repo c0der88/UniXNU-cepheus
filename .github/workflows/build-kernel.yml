@@ -412,7 +412,7 @@ jobs:
             mcopy -n -i "$P" ::/EFI/UniXNU/Payloads/kernel.macho.adt "$A"
           elif [ -f "$K" ]; then
             echo 'WARNING: no stage ADT and no payload.img; regenerating from board defaults'
-            python3 scripts/make-cepheus-adt.py --output "$A" --dram-size 0x180000000
+            python3 scripts/make-cepheus-adt.py --output "$A" --dram-size 0x300000000
           fi
           if [ -f "$K" ] && [ -f "$A" ]; then
             bash scripts/make-cepheus-cust-payload.sh "$K" "$A" cust-payload.img
