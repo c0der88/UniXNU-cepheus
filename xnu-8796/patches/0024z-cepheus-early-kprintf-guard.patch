@@ -1,0 +1,37 @@
+diff --git a/osfmk/arm/cpuid.c b/osfmk/arm/cpuid.c
+--- a/osfmk/arm/cpuid.c
++++ b/osfmk/arm/cpuid.c
+@@ -381,7 +381,16 @@
+ 		 * cache geometries (3MB)?
+ 		 */
+ 		vm_cache_geometry_colors = ((arm_cache_ccsidr_info.bits.NumSets + 1) * cpuid_cache_info_p->c_linesz) / PAGE_SIZE;
++#if !defined(CEPHEUS)
++		/*
++		 * cepheus: cpu_init() (and therefore do_cacheid()) runs before
++		 * kernel_startup_initialize_upto(STARTUP_SUB_KPRINTF), so kprintf()
++		 * would take the OS-log ticket lock (log_lock) while it is still all
++		 * zeroes and panic in lck_ticket_verify().  Keep the value, drop the
++		 * early print.
++		 */
+ 		kprintf(" vm_cache_geometry_colors: %d\n", vm_cache_geometry_colors);
++#endif /* !CEPHEUS */
+ 	} else {
+ 		cpuid_cache_info_p->c_l2size = 0;
+ 
+@@ -407,6 +416,8 @@
+ 		lck_rw_unlock_exclusive(&cpuid_cache_info_lck_rw);
+ 	}
+ 
++#if !defined(CEPHEUS)
++	/* Same reason as the vm_cache_geometry_colors print above. */
+ 	kprintf("%s() - %u bytes %s cache (I:%u D:%u (%s)), %u-way assoc, %u bytes/line\n",
+ 	    __FUNCTION__,
+ 	    cpuid_cache_info_p->c_dsize + cpuid_cache_info_p->c_isize,
+@@ -417,6 +428,7 @@
+ 	    (cpuid_cache_info_p->c_unified) ? "unified" : "separate",
+ 	    cpuid_cache_info_p->c_assoc,
+ 	    cpuid_cache_info_p->c_linesz);
++#endif /* !CEPHEUS */
+ }
+ 
+ cache_info_t   *
